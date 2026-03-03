@@ -1,2 +1,40 @@
-/.DS_Store
-/.env.example
+# Dependencies
+node_modules/
+
+# Environment variables (örnek dosya hariç)
+.env
+.env.local
+.env.production
+
+# Build output
+dist/
+build/
+.next/
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Coverage & Testing
+coverage/
+.nyc_output/
+
+# Uploaded & Generated media
+uploads/
+generated/
+*.mp3
+*.wav
+*.mid
+
+# Misc
+.cache/
+tmp/

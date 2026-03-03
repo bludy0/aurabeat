@@ -1,6 +1,6 @@
-# AuraBeat - AI Müzik Asistanı
+# 🎵 AuraBeat - AI Müzik Asistanı
 
-![AuraBeat Banner](https://via.placeholder.com/1200x400?text=AuraBeat+Web+-+AI+Music+Assistant)
+> Yapay zeka destekli dijital müzik üretim platformu — Akor tahmini, söz yazımı, ses üretimi ve daha fazlası.
 
 AuraBeat, müzisyenler, besteciler ve oyun geliştiriciler için tasarlanmış yapay zeka destekli kapsamlı bir dijital müzik üretim asistanıdır. Yaratıcı tıkanıklığı (writer's block) aşmak amacıyla, akor zinciri tahmini, şarkı sözü oluşturma, Audio-to-MIDI yetenekleri ve yapay zeka tabanlı gerçek ses üretimini (Prompt-to-Audio) modern bir web arayüzünde birleştirir.
 
@@ -23,13 +23,13 @@ Projeyi yerel ortamınızda (localhost) çalıştırmak için aşağıdaki araç
 
 Bu sistemde çalışacak yapay zeka servisleri için şu platformlardan API Key edinmelisiniz:
 *   OpenAI API Key (veya Google Gemini)
-*   Suno API Key (Desteklenen unofficial/official wrappler)
+*   Suno API Key (Desteklenen unofficial/official wrapper)
 
 ## Kurulum (Local Development)
 
 **1. Repoyu Klonlayın**
 ```bash
-git clone https://github.com/KULLANICI_ADINIZ/aurabeat-web.git
+git clone https://github.com/aurabeat-team/aurabeat-web.git
 cd aurabeat-web
 ```
 
@@ -79,6 +79,6 @@ Bu proje **MIT Lisansı** altında lisanslanmıştır. Detaylar için `LICENSE` 
 
 ## İletişim & Proje Sahibi
 
-*   **Proje Ekibi:** [İsminiz/Ekip Adı]
+*   **Proje Ekibi:** AuraBeat Team
 *   **İletişim:** hello@aurabeat.com
 *   **Demo:** [https://aurabeat.vercel.app](https://aurabeat.vercel.app)

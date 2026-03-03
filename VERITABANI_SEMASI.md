@@ -190,9 +190,237 @@ const AudioTrackSchema = new Schema({
 
 ---
 
-## Veritabanı İlişkileri Özeti (ERD Yaklaşımı)
-1.  **Bire-Çok (1:N):** Bir `User` birden fazla `Project` oluşturabilir.
-2.  **Bire-Çok (1:N):** Bir `User` arkaplanda yüzlerce `GenerationHistory` (Log) bırakır (Dashboard grafikleri bunlardan okunur).
-3.  **Çoğa-Çok (M:N) Alternatifi veya 1:N Embedding:** Bir `Project` içerisinde birden fazla `AudioTrack` varyasyonu bulunabilir.
+## 5. Akor Zinciri Koleksiyonu (`ChordSequence`)
+
+Projelere bağlı olarak saklanan akor ilerleyişlerini temsil eder. Her bir akor zinciri, AI tarafından üretilmiş veya kullanıcı tarafından manuel oluşturulmuş olabilir.
+
+```javascript
+const ChordSequenceSchema = new Schema({
+  projectId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true
+  },
+  title: {
+    type: String,
+    default: "Akor Zinciri - 1"
+  },
+  chords: [{
+    name: { type: String, required: true },         // Örn: "Am", "F", "C", "G"
+    duration: { type: Number, default: 1 },          // Beat cinsinden süre
+    velocity: { type: Number, default: 80 },         // MIDI velocity (0-127)
+    octave: { type: Number, default: 4 }
+  }],
+  key: { type: String },                             // Tona/Gam: "C Minor", "G Major"
+  bpm: { type: Number },
+  mood: { type: String },
+  source: {
+    type: String,
+    enum: ['ai_generated', 'user_created', 'ai_suggested'],
+    default: 'user_created'
+  },
+  isExportedAsMidi: { type: Boolean, default: false }
+}, { timestamps: true });
+```
+
+---
+
+## 6. Şarkı Sözü Blokları Koleksiyonu (`LyricBlock`)
+
+AI tarafından üretilen veya kullanıcı tarafından yazılan şarkı sözü bloklarını saklar. Her blok bir verse, nakarat veya bridge gibi bölümleri temsil edebilir.
+
+```javascript
+const LyricBlockSchema = new Schema({
+  projectId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true
+  },
+  sectionType: {
+    type: String,
+    enum: ['verse', 'chorus', 'bridge', 'pre-chorus', 'outro', 'intro', 'hook', 'freestyle'],
+    default: 'verse'
+  },
+  order: { type: Number, default: 0 },                // Blok sırası (sözlerin dizilimi)
+  content: { type: String, required: true },           // Söz metni
+  language: { type: String, enum: ['tr', 'en'], default: 'tr' },
+  
+  // AI üretim meta verileri
+  rhymeScheme: { type: String },                       // "AABB", "ABAB", vb.
+  syllableCount: { type: Number },
+  source: {
+    type: String,
+    enum: ['ai_generated', 'user_written', 'ai_rewritten'],
+    default: 'user_written'
+  },
+  
+  // Benzerlik kontrolü sonuçları
+  similarityCheck: {
+    isChecked: { type: Boolean, default: false },
+    similarityScore: { type: Number },                 // 0.0 - 1.0 arası
+    matchedSong: { type: String }                      // Benzer bulunan şarkı adı (varsa)
+  }
+}, { timestamps: true });
+```
+
+---
+
+## 7. Ortak Çalışma Oturumları Koleksiyonu (`CollaborationSession`)
+
+Real-time collaboration (WebSocket) için oluşturulan oturumların kaydını tutar. Birden fazla kullanıcının aynı projede eş zamanlı çalışmasını yönetir.
+
+```javascript
+const CollaborationSessionSchema = new Schema({
+  projectId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true
+  },
+  hostUserId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  participants: [{
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    role: { type: String, enum: ['editor', 'viewer'], default: 'editor' },
+    joinedAt: { type: Date, default: Date.now }
+  }],
+  isActive: { type: Boolean, default: true },
+  inviteCode: {
+    type: String,
+    unique: true                                       // Benzersiz davet kodu (UUID)
+  },
+  
+  // Sürüm geçmişi (basit snapshot sistemi)
+  snapshots: [{
+    label: { type: String },
+    data: { type: Schema.Types.Mixed },                // O anki proje verisi (JSON)
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now }
+  }]
+}, { timestamps: true });
+```
+
+---
+
+## İndeksleme (Index) Önerileri
+
+Sorgu performansını artırmak için aşağıdaki indeksler önerilir:
+
+```javascript
+// User — e-posta ile hızlı login sorgusu
+UserSchema.index({ email: 1 }, { unique: true });
+
+// Project — kullanıcıya ait projeleri hızlı listeleme
+ProjectSchema.index({ ownerId: 1, createdAt: -1 });
+
+// GenerationHistory — dashboard grafikleri için
+GenerationHistorySchema.index({ userId: 1, createdAt: -1 });
+GenerationHistorySchema.index({ userId: 1, generationType: 1 });
+
+// AudioTrack — projeye bağlı ses dosyalarını listeleme
+AudioTrackSchema.index({ projectId: 1 });
+
+// ChordSequence — projeye bağlı akor zincirleri
+ChordSequenceSchema.index({ projectId: 1 });
+
+// LyricBlock — projeye bağlı söz blokları (sıralı)
+LyricBlockSchema.index({ projectId: 1, order: 1 });
+
+// CollaborationSession — aktif oturumları hızlı sorgulama
+CollaborationSessionSchema.index({ projectId: 1, isActive: 1 });
+CollaborationSessionSchema.index({ inviteCode: 1 }, { unique: true });
+```
+
+---
+
+## Veritabanı İlişkileri (ERD Diyagramı)
+
+```mermaid
+erDiagram
+    User ||--o{ Project : "oluşturur"
+    User ||--o{ GenerationHistory : "log bırakır"
+    User ||--o{ CollaborationSession : "başlatır"
+    
+    Project ||--o{ ChordSequence : "içerir"
+    Project ||--o{ LyricBlock : "içerir"
+    Project ||--o{ AudioTrack : "içerir"
+    Project ||--o| CollaborationSession : "bağlıdır"
+    
+    CollaborationSession }o--o{ User : "katılımcılar"
+
+    User {
+        ObjectId _id
+        String username
+        String email
+        String passwordHash
+        String role
+        Number totalTokensUsed
+        Object dailyApiLimits
+        Object preferences
+    }
+    
+    Project {
+        ObjectId _id
+        ObjectId ownerId
+        String title
+        Boolean isPublic
+        String projectHash
+        Object blueprintInfo
+        Boolean isFavorite
+    }
+    
+    GenerationHistory {
+        ObjectId _id
+        ObjectId userId
+        String generationType
+        String modelUsed
+        Number promptTokens
+        Number completionTokens
+        Object context
+        Boolean isSuccessful
+    }
+    
+    AudioTrack {
+        ObjectId _id
+        ObjectId projectId
+        String title
+        String originalPrompt
+        Object urls
+        Object stems
+        Number durationSeconds
+    }
+    
+    ChordSequence {
+        ObjectId _id
+        ObjectId projectId
+        String title
+        Array chords
+        String key
+        Number bpm
+        String source
+    }
+    
+    LyricBlock {
+        ObjectId _id
+        ObjectId projectId
+        String sectionType
+        Number order
+        String content
+        String rhymeScheme
+        Object similarityCheck
+    }
+    
+    CollaborationSession {
+        ObjectId _id
+        ObjectId projectId
+        ObjectId hostUserId
+        Array participants
+        Boolean isActive
+        String inviteCode
+        Array snapshots
+    }
+```
 
 *Not: Veritabanında hız kazanmak ve sorguları kısaltmak amacıyla `GenerationHistory` gibi devasa boyutlara ulaşabilen (Append-Only) metrik/log koleksiyonları, ana projeden ayrılarak bağımsız yapılandırılmıştır.*

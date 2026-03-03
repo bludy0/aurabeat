@@ -49,6 +49,62 @@ Sistem, yüksek erişilebilirlik, anlık veri akışı ve esnek ölçeklenebilir
     * MIDI dosyası üretmek için **midi-writer-js**.
     * Planların raporlanması için **jsPDF**.
 
+### Mimari Diyagram
+
+```mermaid
+graph TB
+    subgraph Frontend["Frontend - React SPA"]
+        UI["Kullanıcı Arayüzü"]
+        CTX["Context API / Redux"]
+        WA["Web Audio API"]
+        CHART["Chart.js Grafikleri"]
+    end
+
+    subgraph Backend["Backend - Node.js / Express"]
+        AUTH["JWT Auth Middleware"]
+        ROUTES["REST API Routes"]
+        WS["Socket.IO - WebSocket"]
+        RL["Rate Limiter"]
+    end
+
+    subgraph AI["AI Servisleri"]
+        LLM["OpenAI / Gemini API"]
+        SUNO["Suno / MusicGen API"]
+        VEC["Vector DB - Embeddings"]
+    end
+
+    subgraph DB["Veritabanı - MongoDB"]
+        USERS[("Users")]
+        PROJECTS[("Projects")]
+        HISTORY[("GenerationHistory")]
+        AUDIO[("AudioTracks")]
+    end
+
+    subgraph Export["Çıktı Motorları"]
+        MIDI["midi-writer-js"]
+        PDF["jsPDF"]
+        TONE["Tone.js"]
+    end
+
+    UI --> CTX
+    CTX --> ROUTES
+    UI --> WA
+    UI --> CHART
+    UI <--> WS
+
+    ROUTES --> AUTH
+    AUTH --> RL
+    RL --> LLM
+    RL --> SUNO
+    RL --> VEC
+    ROUTES --> DB
+    WS --> PROJECTS
+
+    CTX --> MIDI
+    CTX --> PDF
+    CTX --> TONE
+```
+
 ---
 
 ## 4. TEMEL MODÜLLER VE KAPSAMLI İŞLEVSEL ÖZELLİKLER
@@ -121,4 +177,26 @@ Uygulamanın denetimi ve finansal (API maliyeti) sürdürülebilirliği için ka
 
 AuraBeat projesi, jeneratif yapay zeka modelleri ile pratik müzik araçlarını estetik ve modern bir "Single Page Application" zemininde entegre eden çok katmanlı bir yazılım ürünüdür. Hem teknik anlamda mikroservis kullanımını (birden fazla API çağrısı, token yönetimi) hem de kapsamlı kullanıcı arayüzü problemlerinin (interaktif canvas, form kontrolleri, grafiksel görselleştirme) çözümünü tek potada eritmeyi başarmıştır. 
 
-Proje tamamlandığında sadece bir "oyuncak" olmaktan ziyade, profesyonel müzisyenlerin iş akışlarına dahil edebilecekleri, MIDI çıktısı veya Mix tavsiyeleri alabilecekleri gerçek bir endüstri standartı prototip olma özelliği taşımaktadır.
+AuraBeat, profesyonel müzisyenlerin iş akışlarına dahil edebilecekleri, MIDI çıktısı veya Mix tavsiyeleri alabilecekleri gerçek bir endüstri standartı prototip olma özelliği taşımaktadır.
+
+---
+
+## 8. KAYNAKÇA (REFERANSLAR)
+
+1. **React Documentation** — Meta Platforms, Inc. https://react.dev/
+2. **Node.js Documentation** — OpenJS Foundation. https://nodejs.org/docs/
+3. **Express.js Guide** — TJ Holowaychuk et al. https://expressjs.com/
+4. **MongoDB Manual** — MongoDB, Inc. https://www.mongodb.com/docs/manual/
+5. **Mongoose ODM Documentation** — Automattic, Inc. https://mongoosejs.com/docs/
+6. **JSON Web Token (RFC 7519)** — IETF. https://datatracker.ietf.org/doc/html/rfc7519
+7. **Web Audio API** — W3C Specification. https://www.w3.org/TR/webaudio/
+8. **Tone.js** — Yotam Mann. https://tonejs.github.io/
+9. **midi-writer-js** — https://github.com/grimmdude/MidiWriterJS
+10. **jsPDF** — https://github.com/parallax/jsPDF
+11. **Chart.js** — https://www.chartjs.org/docs/
+12. **Socket.IO** — Guillermo Rauch. https://socket.io/docs/v4/
+13. **OpenAI API Reference** — OpenAI, Inc. https://platform.openai.com/docs/
+14. **Google Gemini API** — Google DeepMind. https://ai.google.dev/docs
+15. **Suno AI** — https://suno.com/
+16. **Goodfellow, I., Bengio, Y., & Courville, A.** (2016). *Deep Learning*. MIT Press.
+17. **Briot, J.-P., Hadjeres, G., & Pachet, F.** (2020). *Deep Learning Techniques for Music Generation*. Springer.
