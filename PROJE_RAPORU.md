@@ -65,6 +65,7 @@ graph TB
         ROUTES["REST API Routes"]
         WS["Socket.IO - WebSocket"]
         RL["Rate Limiter"]
+        CREDIT["AuraCoin Kredi Motoru"]
     end
 
     subgraph AI["AI Servisleri"]
@@ -97,6 +98,7 @@ graph TB
     RL --> LLM
     RL --> SUNO
     RL --> VEC
+    CREDIT --> RL
     ROUTES --> DB
     WS --> PROJECTS
 
@@ -110,6 +112,8 @@ graph TB
 ## 4. TEMEL MODÜLLER VE KAPSAMLI İŞLEVSEL ÖZELLİKLER
 
 Proje, birbirleriyle asenkron olarak haberleşen ve entegre çalışan 6 gelişmiş mühendislik modülü etrafında şekillenmiştir. Özellikler, basit bir kullanıcı etkileşiminden ziyade derinlemesine bir prodüksiyon standardı sunmak üzere kurgulanmıştır.
+
+> **Not:** Platformdaki tüm AI destekli işlemler sınırsız değildir; site içi sanal birim olan **AuraCoin (AC)** ile ücretlendirilir. Detaylar için bkz. Bölüm 4.9.
 
 ### 4.1. Gelişmiş Kullanıcı Dashboard'u ve Kişiselleştirilmiş Analitik
 Sisteme (Register/Login) giriş yapan her kullanıcı için sadece bir kayıt ekranı değil, aynı zamanda detaylı bir **Veri Analitiği Paneli (Data Analytics Board)** oluşturulur.
@@ -155,13 +159,44 @@ Sistemin en yenilikçi tarafı, kullanıcının sisteme sadece komut vermemesi, 
 ### 4.8. Etik Doğrulama ve Telif Asistanı (Similarity Checker)
 * **AI Plagiarism Engine:** Üretilen veya yazılan şarkı sözlerinin (veya MIDI dizilimlerinin) çok bilindik popüler parçalarla yapısal benzerliğini, Vektörel Veritabanı (Vector DB / Embeddings) üzerinde kontrol eden "Benzerlik Skoru" hesaplayıcısı. Bu sayede kullanıcı, farkında olmadan bilindik bir telif hakkını ihlal edip etmediğini ölçebilir.
 
+### 4.9. Site İçi Kredi Ekonomisi — AuraCoin (AC) Sistemi
+Platformdaki yapay zeka destekli tüm işlemler **sınırsız değildir**. Her AI servisi, site içi sanal birim olan **AuraCoin (AC)** karşılığında kullanılır. Bu model, hem API maliyetlerinin sürdürülebilirliğini sağlar hem de kullanıcıların bilinçli ve stratejik üretim yapmasını teşvik eder.
+
+* **Başlangıç Kredisi (Welcome Bonus):** Yeni kayıt olan her kullanıcıya platformu keşfetmesi için **100 AC** ücretsiz olarak tanımlanır.
+* **İşlem Bazlı Ücretlendirme:** Her AI işleminin karmaşıklığına göre farklı AuraCoin maliyeti vardır:
+
+| İşlem | Maliyet (AC) |
+|---|---|
+| Blueprint (İskelet) Üretimi | 5 AC |
+| Sıradaki Akor Tahmini | 2 AC |
+| Şarkı Sözü Üretimi | 5 AC |
+| Satır Yeniden Yazma (Rewrite) | 1 AC |
+| Gerçek Ses (Audio) Üretimi | 25 AC |
+| Stem Separation (Ses Ayrıştırma) | 15 AC |
+| Telif Benzerlik Kontrolü | 3 AC |
+| Audio-to-MIDI Dönüşüm | 10 AC |
+
+* **Bakiye Kontrol Middleware'i:** Her `/ai/*` endpoint'ine istek atılmadan önce, sunucu tarafında kullanıcının AuraCoin bakiyesi kontrol edilir. Yetersiz bakiyede işlem reddedilir ve kullanıcıya "Yetersiz AuraCoin" uyarısı döner (HTTP 402 Payment Required).
+* **Gerçek Zamanlı Bakiye Takibi:** Dashboard üzerinde kullanıcının mevcut AC bakiyesi, harcama geçmişi (hangi işleme kaç AC harcandı) ve trend grafikleri (son 7/30 gün) gösterilir.
+* **Kredi Paketleri (Top-Up):** Kullanıcılar AuraCoin bakiyelerini artırmak için önceden tanımlanmış paketler satın alabilir:
+
+| Paket | AuraCoin | Fiyat |
+|---|---|---|
+| Starter | 100 AC | Ücretsiz (Kayıt Bonusu) |
+| Basic | 500 AC | ₺49.99 |
+| Pro | 1500 AC | ₺119.99 |
+| Studio | 5000 AC | ₺349.99 |
+
+* **Düşük Bakiye Uyarısı:** Bakiye 10 AC'nin altına düştüğünde UI üzerinde sarı uyarı bandı, 0 AC'de ise kırmızı engelleme bildirimi gösterilir.
+
 ---
 
 ## 5. YÖNETİCİ (ADMIN) PANELİ VE SİSTEM GÜVENLİĞİ
 
 Uygulamanın denetimi ve finansal (API maliyeti) sürdürülebilirliği için kapsamlı bir admin sistemi kurgulanmıştır.
 * **Kullanıcı ve Metrik İzleme:** Toplam aktif kullanıcı (DAU/WAU), API istek oranları, başarı (success) yüzdesi ve sistem geneli token harcama grafikleri.
-* **Limitler ve Maliyet Yönetimi:** Spam veya aşırı tüketimi önlemek için kullanıcı tabanlı "Rate Limiting" (günlük limit belirleme), token bütçe uyarı sistemleri.
+* **AuraCoin Ekonomi Yönetimi:** Sistem genelinde dağıtılan toplam AuraCoin miktarı, ortalama harcama oranı, en çok tüketen kullanıcılar ve gelir raporları. Admin, belirli kullanıcılara manuel AC ekleme veya çıkarma yetkisine sahiptir.
+* **Paket ve Fiyatlandırma Kontrolü:** Kredi paketlerinin fiyatlarını ve AC miktarlarını dinamik olarak güncelleyebilen yönetim arayüzü.
 * **Moderasyon:** Şüpheli, uygunsuz veya telif barındıran metin/söz üretimlerini izleme ve kullanıcı hesaplarını gerektiğinde askıya alma yetkisi.
 
 ---

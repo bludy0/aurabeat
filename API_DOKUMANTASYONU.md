@@ -93,7 +93,9 @@ Bu bölüm, LLM servisleri ile sunucumuz arasında köprü kurarak, yetkilendiri
         "chordProgression": ["Cm", "G#", "A#", "Fm"],
         "mixingTips": ["Bass sentezleyiciye hafif chorus efekti uygulayın.", "Kick frekansında 60Hz bölgesini boost edin."]
       },
-      "tokensUsed": 150
+      "tokensUsed": 150,
+      "auraCoinCost": 5,
+      "walletBalance": 95
     }
     ```
 *   **Frontend Kullanımı:** AI özellikleri modülünde "Üret" butonuna basıldığında tetiklenir. Dönen yanıt, state içerisine kaydedilip ekrandaki interaktif kartlarda (BPM, Akorlar, Enstrümanlar olarak) ayrı alanlarda veri görselleştirmesine yansıtılır.
@@ -162,6 +164,16 @@ Bu API bölümü, kullanıcının kişisel profili, token limitleri (rate limit)
         "totalGenerations": 42,
         "totalTokensSpent": 15400,
         "favoriteCount": 5,
+        "wallet": {
+          "balance": 245,
+          "totalSpent": 855,
+          "totalPurchased": 1000,
+          "recentTransactions": [
+            {"type": "spend", "amount": -25, "description": "Audio Üretimi", "date": "2026-03-02T14:20:00Z"},
+            {"type": "spend", "amount": -5, "description": "Blueprint Üretimi", "date": "2026-03-02T12:10:00Z"},
+            {"type": "topup", "amount": 500, "description": "Basic Paket", "date": "2026-03-01T09:00:00Z"}
+          ]
+        },
         "genreDistribution": {
           "Synthwave": 20,
            "Lo-Fi": 15,
@@ -180,7 +192,150 @@ Bu API bölümü, kullanıcının kişisel profili, token limitleri (rate limit)
 
 ### *Güvenlik ve Validasyon Notları*
 * Tüm endpoint'lerde Express.js ara katmanı (Middleware) kullanılarak şema (Schema) kontrolü (Mongoose Joi/Zod) yapılacaktır.
-* Yapay zeka maliyetlerini önlemek amacıyla kullanıcının günde maksimum kaç kez `/ai/` endpoint'ine erişebileceğini sınırlayan (Rate Limiting) mekanizma kurulmuştur. Limit aşımında API, HTTP 429 (Too Many Requests) hatası dönecektir.
+* Tüm `/ai/*` endpoint'leri AuraCoin bakiye kontrolü yapar. Yetersiz bakiyede HTTP **402 (Payment Required)** döner.
+* Her başarılı AI yanıtında aşağıdaki AuraCoin başlıkları (header) döner:
+
+```
+X-AuraCoin-Cost: 5              # Bu işlemin maliyeti (AC)
+X-AuraCoin-Balance: 95           # İşlem sonrası kalan bakiye
+```
+
+---
+
+## 3.2. AuraCoin Kredi İşlemleri (Credits API)
+
+Bu bölüm, kullanıcının AuraCoin bakiyesini yönetmek, harcama geçmişini görüntülemek ve kredi paketi satın almak için kullanılan endpoint'leri içerir.
+
+### 3.2.1. Bakiye Sorgulama
+*   **Method:** `GET`
+*   **URL:** `/credits/balance`
+*   **Auth Koruması:** Gerekli
+*   **Response (200 OK):**
+    ```json
+    {
+      "status": "success",
+      "data": {
+        "balance": 245,
+        "totalSpent": 855,
+        "totalPurchased": 1000
+      }
+    }
+    ```
+
+### 3.2.2. Harcama Geçmişi
+*   **Method:** `GET`
+*   **URL:** `/credits/transactions`
+*   **Auth Koruması:** Gerekli
+*   **Query Parametreleri:** `?page=1&limit=20&type=spend&startDate=2026-03-01&endDate=2026-03-03`
+*   **Response (200 OK):**
+    ```json
+    {
+      "status": "success",
+      "data": {
+        "transactions": [
+          {
+            "type": "spend",
+            "amount": -25,
+            "balanceAfter": 245,
+            "description": "Gerçek Ses Üretimi (Audio)",
+            "relatedService": "audio",
+            "createdAt": "2026-03-02T14:20:00Z"
+          },
+          {
+            "type": "topup",
+            "amount": 500,
+            "balanceAfter": 270,
+            "description": "Basic Paket Satın Alımı",
+            "relatedService": "topup",
+            "createdAt": "2026-03-01T09:00:00Z"
+          }
+        ],
+        "pagination": { "currentPage": 1, "totalPages": 3, "totalItems": 52 }
+      }
+    }
+    ```
+
+### 3.2.3. Kredi Paketlerini Listele
+*   **Method:** `GET`
+*   **URL:** `/credits/packages`
+*   **Auth Koruması:** Yok (Açık Endpoint — fiyatlandırma sayfası için)
+*   **Response (200 OK):**
+    ```json
+    {
+      "status": "success",
+      "data": [
+        { "name": "Basic", "auraCoins": 500, "priceTRY": 49.99, "isMostPopular": false, "badgeColor": "#3B82F6" },
+        { "name": "Pro", "auraCoins": 1500, "priceTRY": 119.99, "isMostPopular": true, "badgeColor": "#8B5CF6" },
+        { "name": "Studio", "auraCoins": 5000, "priceTRY": 349.99, "isMostPopular": false, "badgeColor": "#F59E0B" }
+      ]
+    }
+    ```
+
+### 3.2.4. Kredi Paketi Satın Al (Top-Up)
+*   **Method:** `POST`
+*   **URL:** `/credits/topup`
+*   **Auth Koruması:** Gerekli
+*   **Request Parametreleri (Body):**
+    ```json
+    {
+      "packageId": "64b5f92a1c2d3e4f5a6b7c8d",
+      "paymentMethod": "credit_card"
+    }
+    ```
+*   **Response (200 OK):**
+    ```json
+    {
+      "status": "success",
+      "message": "500 AuraCoin başarıyla yüklendi.",
+      "data": {
+        "addedCoins": 500,
+        "newBalance": 745,
+        "transactionId": "txn_abc123"
+      }
+    }
+    ```
+
+### 3.2.5. İşlem Maliyetleri Tablosu
+*   **Method:** `GET`
+*   **URL:** `/credits/pricing`
+*   **Auth Koruması:** Yok
+*   **Response (200 OK):**
+    ```json
+    {
+      "status": "success",
+      "data": [
+        { "service": "blueprint", "label": "Blueprint Üretimi", "cost": 5 },
+        { "service": "chords", "label": "Akor Tahmini", "cost": 2 },
+        { "service": "lyrics", "label": "Şarkı Sözü Üretimi", "cost": 5 },
+        { "service": "rewrite", "label": "Satır Yeniden Yazma", "cost": 1 },
+        { "service": "audio", "label": "Ses Üretimi", "cost": 25 },
+        { "service": "stem_separation", "label": "Stem Ayrıştırma", "cost": 15 },
+        { "service": "similarity_check", "label": "Benzerlik Kontrolü", "cost": 3 },
+        { "service": "audio_to_midi", "label": "Audio-to-MIDI", "cost": 10 }
+      ]
+    }
+    ```
+
+### 3.2.6. Admin: Kullanıcı Kredisi Yönetimi
+*   **Method:** `POST`
+*   **URL:** `/admin/credits/adjust`
+*   **Auth Koruması:** Gerekli (Sadece Admin)
+*   **Request Parametreleri (Body):**
+    ```json
+    {
+      "userId": "64b5f92a1c2d3e4f5a6b7c8d",
+      "amount": 100,
+      "reason": "Destek talebi #1234 — hatalı işlem iadesi"
+    }
+    ```
+*   **Response (200 OK):**
+    ```json
+    {
+      "status": "success",
+      "message": "100 AC eklendi. Yeni bakiye: 345 AC",
+      "data": { "userId": "...", "newBalance": 345 }
+    }
+    ```
 
 ---
 
@@ -608,6 +763,7 @@ Tüm endpoint'ler hata durumunda aşağıdaki standart formatta yanıt döner:
 |---|---|---|
 | `400` | Bad Request | Eksik veya geçersiz parametre (validasyon hatası) |
 | `401` | Unauthorized | JWT token eksik veya süresi dolmuş |
+| `402` | Payment Required | Yetersiz AuraCoin bakiyesi |
 | `403` | Forbidden | Yetkisiz erişim (ör. admin endpoint'ine user erişimi) |
 | `404` | Not Found | İstenen kaynak bulunamadı |
 | `409` | Conflict | Çakışma (ör. zaten kayıtlı e-posta) |

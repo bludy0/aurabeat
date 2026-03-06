@@ -33,20 +33,72 @@ const UserSchema = new Schema({
     enum: ['user', 'admin', 'premium'], 
     default: 'user' 
   },
-  totalTokensUsed: { 
-    type: Number, 
-    default: 0 
+  
+  // -- AuraCoin (AC) Cüzdan Sistemi --
+  wallet: {
+    balance: { type: Number, default: 100 },          // Başlangıç bonusu: 100 AC
+    totalSpent: { type: Number, default: 0 },          // Toplam harcanan AC
+    totalPurchased: { type: Number, default: 0 },      // Toplam satın alınan AC
+    lastTopUpDate: { type: Date }
   },
-  dailyApiLimits: {
-    audioRemaining: { type: Number, default: 5 },  // Günde 5 ses üretimi
-    textRemaining: { type: Number, default: 50 },  // Günde 50 AI asistan kullanımı
-    lastResetDate: { type: Date, default: Date.now } // Her gece 00:00'da sıfırlama için
-  },
+  
   preferences: {
     theme: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },
     language: { type: String, enum: ['tr', 'en'], default: 'tr' }
   }
 }, { timestamps: true }); // createdAt ve updatedAt otomatik eklenir
+```
+
+---
+
+## 1.1. Kredi İşlem Geçmişi Koleksiyonu (`CreditTransaction`)
+
+Kullanıcının AuraCoin harcama ve yükleme geçmişini tutan log koleksiyonudur. Dashboard üzerindeki harcama grafikleri bu veriden beslenir.
+
+```javascript
+const CreditTransactionSchema = new Schema({
+  userId: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  },
+  type: { 
+    type: String, 
+    enum: ['spend', 'topup', 'bonus', 'refund', 'admin_adjust'],
+    required: true
+  },
+  amount: { type: Number, required: true },            // Pozitif: ekleme, Negatif: harcama
+  balanceAfter: { type: Number, required: true },      // İşlem sonrası kalan bakiye
+  
+  // İşlem detayı
+  description: { type: String },                       // "Blueprint Üretimi", "Pro Paket Satın Alımı" vb.
+  relatedService: { 
+    type: String, 
+    enum: ['blueprint', 'chords', 'lyrics', 'rewrite', 'audio', 'stem_separation', 'similarity_check', 'audio_to_midi', 'topup', 'bonus', 'admin']
+  },
+  
+  // Satın alma ise ödeme referansı
+  paymentRef: { type: String }                         // Ödeme sağlayıcı referans kodu
+}, { timestamps: true });
+```
+
+---
+
+## 1.2. Kredi Paketleri Koleksiyonu (`CreditPackage`)
+
+Admin tarafından yönetilen satın alınabilir AuraCoin paketlerini tanımlar.
+
+```javascript
+const CreditPackageSchema = new Schema({
+  name: { type: String, required: true },              // "Basic", "Pro", "Studio"
+  auraCoins: { type: Number, required: true },         // Paketteki AC miktarı
+  priceTRY: { type: Number, required: true },          // Türk Lirası fiyatı
+  priceUSD: { type: Number },                          // USD fiyatı (opsiyonel)
+  isActive: { type: Boolean, default: true },          // Admin tarafından aktif/pasif
+  badgeColor: { type: String },                        // UI'da paket kartının rengi
+  isMostPopular: { type: Boolean, default: false },    // "En Popüler" etiketi
+  bonusPercentage: { type: Number, default: 0 }        // Ekstra bonus AC yüzdesi
+}, { timestamps: true });
 ```
 
 ---
@@ -331,6 +383,10 @@ LyricBlockSchema.index({ projectId: 1, order: 1 });
 // CollaborationSession — aktif oturumları hızlı sorgulama
 CollaborationSessionSchema.index({ projectId: 1, isActive: 1 });
 CollaborationSessionSchema.index({ inviteCode: 1 }, { unique: true });
+
+// CreditTransaction — kullanıcı harcama geçmişi ve dashboard grafikleri
+CreditTransactionSchema.index({ userId: 1, createdAt: -1 });
+CreditTransactionSchema.index({ userId: 1, type: 1 });
 ```
 
 ---
@@ -342,6 +398,7 @@ erDiagram
     User ||--o{ Project : "oluşturur"
     User ||--o{ GenerationHistory : "log bırakır"
     User ||--o{ CollaborationSession : "başlatır"
+    User ||--o{ CreditTransaction : "harcama/yükleme"
     
     Project ||--o{ ChordSequence : "içerir"
     Project ||--o{ LyricBlock : "içerir"
@@ -356,9 +413,27 @@ erDiagram
         String email
         String passwordHash
         String role
-        Number totalTokensUsed
-        Object dailyApiLimits
+        Object wallet
         Object preferences
+    }
+    
+    CreditTransaction {
+        ObjectId _id
+        ObjectId userId
+        String type
+        Number amount
+        Number balanceAfter
+        String description
+        String relatedService
+    }
+    
+    CreditPackage {
+        ObjectId _id
+        String name
+        Number auraCoins
+        Number priceTRY
+        Boolean isActive
+        Boolean isMostPopular
     }
     
     Project {
